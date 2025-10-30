@@ -1,67 +1,18 @@
-/* Global styles for the WeightyExile skeleton */
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  background-color: #1a1a1a;
-  color: #e6e6e6;
-  height: 100%;
-}
+/* Two‑pane picker tweaks */
+.picker-columns.two { grid-template-columns: 1fr 1.5fr; }
+.picker-container { display: grid; gap: 0.75rem; }
+.picker-toolbar { display: flex; gap: 0.5rem; }
+.picker-col { background:#141414; border:1px solid #333; border-radius:6px; padding:0.5rem; min-height:320px; }
+.picker-title { font-weight:600; margin-bottom:0.5rem; color:#d6c6a6; }
+.picker-list { list-style:none; padding:0; margin:0; max-height:calc(60vh); overflow:auto; }
+.picker-list li { padding:0.35rem 0.5rem; border-radius:4px; cursor:pointer; }
+.picker-list li:hover { background:#1f1f1f; }
+.picker-list li.active { background:#2a2417; border:1px solid #5c4a1e; }
+.picker-list .count { opacity:0.6; font-size:0.9em; }
 
-body {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.app-container {
-  flex: 1;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.app-header h1 {
-  margin: 0;
-  font-size: 2rem;
-  letter-spacing: 1px;
-}
-
-.subtitle {
-  font-size: 0.9rem;
-  color: #9a9a9a;
-}
-
-.app-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-@media (min-width: 768px) {
-  .app-content {
-    flex-direction: row;
-  }
-}
-
-.base-selector-panel,
-.stat-panel {
-  flex: 1;
-  background-color: #262626;
-  padding: 1rem;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-}
-
-.base-select {
+/* Stat panel styles */
+.stat-panel h3 { margin-top: 0; margin-bottom: 0.5rem; }
+.stat-search {
   width: 100%;
   padding: 0.5rem;
   font-size: 1rem;
@@ -69,31 +20,16 @@ body {
   color: #e6e6e6;
   border: 1px solid #444;
   border-radius: 4px;
+  margin-bottom: 0.25rem;
 }
-
-/* Search input for filtering base types */
-.base-search {
-  width: 100%;
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
-  background-color: #1e1e1e;
-  color: #e6e6e6;
-  border: 1px solid #444;
-  border-radius: 4px;
-}
-
-.base-search::placeholder {
-  color: #777;
-}
-
-.base-select option {
-  background-color: #1e1e1e;
-  color: #e6e6e6;
-}
-
-.selected-base {
-  margin-top: 0.5rem;
-  font-style: italic;
-  color: #b3b3b3;
-}
+.stat-suggestions { background:#141414; border:1px solid #333; border-radius:6px; max-height:220px; overflow:auto; margin-bottom:0.5rem; }
+.stat-suggestion { padding:0.35rem 0.5rem; cursor:pointer; }
+.stat-suggestion:hover { background:#1f1f1f; }
+.stat-actions { display:flex; gap:0.75rem; align-items:center; margin-bottom:0.5rem; }
+.btn { background:#2a2417; border:1px solid #5c4a1e; color:#e7dbb5; padding:0.4rem 0.6rem; border-radius:4px; cursor:pointer; }
+.btn:hover { background:#3a321f; }
+.min-weight { display:flex; gap:0.4rem; align-items:center; }
+.stat-list { display:grid; gap:0.5rem; }
+.stat-row { background:#141414; border:1px solid #333; border-radius:6px; padding:0.5rem; }
+.stat-text { margin-bottom:0.35rem; color:#ddd; }
+.stat-controls { display:flex; flex-wrap:wrap; gap:0.4rem; align-items:center; }
