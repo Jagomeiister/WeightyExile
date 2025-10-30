@@ -1,83 +1,99 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ItemService } from '../services/ItemService';
-import { inferType } from '../utils/inferType';
+import { ItemService, ItemCategory } from '../services/ItemService';
 
+/**
+ * ItemPicker presents a two‑column interface for selecting an item base.
+ * The left column lists categories (e.g. Accessories, Armour, Weapons) and
+ * the right column lists the base types within the selected category.
+ * A search box filters bases across all categories.  When a base is
+ * clicked, the onSelect callback is invoked with the base name.
+ */
 interface ItemPickerProps {
+  /**
+   * Callback invoked when the user selects a base item.  The argument
+   * is the base type string.
+   */
   onSelect: (base: string) => void;
 }
 
-/**
- * Two‑pane picker: Type (left) → Base (right)
- * - No class column; we derive a friendly "type" bucket from base names.
- * - Top search narrows both panes.
- */
 const ItemPicker: React.FC<ItemPickerProps> = ({ onSelect }) => {
-  const [allBases, setAllBases] = useState<string[]>([]);
-  const [q, setQ] = useState('');
-  const [selType, setSelType] = useState<string | null>(null);
+  const [categories, setCategories] = useState<ItemCategory[]>([]);
+  const [search, setSearch] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
+  // Load categories on mount
   useEffect(() => {
-    ItemService.getAllBases().then(setAllBases);
+    const load = async () => {
+      const cats = await ItemService.getCategories();
+      setCategories(cats);
+      // Default to the first category if available
+      if (cats.length > 0) {
+        setSelectedCategoryId(cats[0].id);
+      }
+    };
+    load();
   }, []);
 
-  const filteredBases = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return allBases;
-    return allBases.filter(b => b.toLowerCase().includes(s));
-  }, [allBases, q]);
+  /**
+   * Filter categories and their bases based on the search term.
+   * Categories with no matching bases are excluded from the returned list.
+   */
+  const filteredCategories = useMemo(() => {
+    if (!search) return categories;
+    const q = search.toLowerCase();
+    return categories
+      .map((cat) => {
+        const bases = cat.bases.filter((b) => b.toLowerCase().includes(q));
+        return { ...cat, bases };
+      })
+      .filter((cat) => cat.bases.length > 0);
+  }, [categories, search]);
 
-  const typeBuckets = useMemo(() => {
-    const map = new Map<string, string[]>();
-    for (const b of filteredBases) {
-      const t = inferType(b);
-      if (!map.has(t)) map.set(t, []);
-      map.get(t)!.push(b);
-    }
-    const entries = Array.from(map.entries()).map(([type, list]) => ({
-      type,
-      list: list.sort((a, b) => a.localeCompare(b)),
-    }));
-    entries.sort((a, b) => a.type.localeCompare(b.type));
-    return entries;
-  }, [filteredBases]);
+  // Determine the currently selected category
+  const selectedCategory = useMemo(() => {
+    // If the selectedCategoryId no longer exists in filtered list, pick the first
+    const byId = filteredCategories.find((c) => c.id === selectedCategoryId);
+    return byId ?? filteredCategories[0] ?? null;
+  }, [filteredCategories, selectedCategoryId]);
 
-  const bases = useMemo(() => {
-    if (!selType) return [];
-    const b = typeBuckets.find(t => t.type === selType);
-    return b ? b.list : [];
-  }, [typeBuckets, selType]);
+  // Base list for selected category
+  const bases = selectedCategory ? selectedCategory.bases : [];
 
   return (
-    <div className="picker-container">
-      <div className="picker-toolbar">
+    <div className="item-picker">
+      <div className="picker-search-row">
         <input
+          type="text"
           className="base-search"
-          placeholder="Search bases…"
-          value={q}
-          onChange={e => { setQ(e.target.value); }}
+          placeholder="Search bases..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-
-      <div className="picker-columns two">
-        <div className="picker-col">
-          <div className="picker-title">Type</div>
+      <div className="picker-columns">
+        <div className="picker-col categories">
           <ul className="picker-list">
-            {typeBuckets.map(t => (
-              <li key={t.type}
-                  className={t.type === selType ? 'active' : ''}
-                  onClick={() => setSelType(t.type)}>
-                {t.type} <span className="count">({t.list.length})</span>
+            {filteredCategories.map((cat) => (
+              <li
+                key={cat.id}
+                className={cat.id === (selectedCategory && selectedCategory.id) ? 'active' : ''}
+                onClick={() => setSelectedCategoryId(cat.id)}
+              >
+                {cat.label}
               </li>
             ))}
           </ul>
         </div>
-
-        <div className="picker-col">
-          <div className="picker-title">Base</div>
+        <div className="picker-col bases">
           <ul className="picker-list">
-            {bases.map(b => (
-              <li key={b} onClick={() => onSelect(b)}>{b}</li>
+            {bases.map((b) => (
+              <li key={b} onClick={() => onSelect(b)}>
+                {b}
+              </li>
             ))}
+            {bases.length === 0 && (
+              <li className="no-results">No bases found</li>
+            )}
           </ul>
         </div>
       </div>

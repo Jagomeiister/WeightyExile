@@ -1,5 +1,5 @@
 import React from 'react';
-import BaseSelector from './components/BaseSelector';
+import ItemPicker from './components/ItemPicker';
 import StatPanel from './components/StatPanel';
 
 /**
@@ -10,6 +10,7 @@ import StatPanel from './components/StatPanel';
  * GroupControls) will be added here.
  */
 const App: React.FC = () => {
+  const [selectedBase, setSelectedBase] = React.useState<string | null>(null);
   return (
     <div className="app-container">
       <header className="app-header">
@@ -19,7 +20,10 @@ const App: React.FC = () => {
       <main className="app-content">
         <section className="base-selector-panel">
           <h2>Select Base Item</h2>
-          <BaseSelector />
+          <ItemPicker onSelect={(base: string) => setSelectedBase(base)} />
+          {selectedBase && (
+            <p className="selected-base">Selected base: {selectedBase}</p>
+          )}
         </section>
         <section className="stat-panel">
           <h2>Configure Stats & Weights</h2>
