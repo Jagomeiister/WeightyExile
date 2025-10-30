@@ -1,7 +1,21 @@
-This directory contains cached JSON data pulled from the Path of Exile trade API.
+# Data Directory
 
-During development, these files may be empty or contain minimal placeholders.  In
-production, a scheduled GitHub Action should fetch fresh data from the
-`/api/trade/data/items`, `/api/trade/data/stats`, `/api/trade/data/static` and
-`/api/trade/data/leagues` endpoints and commit them here.  The application
-loads these files at runtime to avoid hitting the PoE API on every page load.
+This directory contains cached JSON datasets pulled from the Path of Exile trade API and ingested by the app at runtime.
+
+## Files
+- `items.json`   – Item definitions for trade filters
+- `stats.json`   – Stat filter keys, weights & text
+- `static.json`  – Static helpers (e.g. mods, tiers, misc keys)
+- `leagues.json` – League info / selectables
+
+## Update Workflow
+- **In production:** Data is refreshed daily by a GitHub Action, fetching from the latest official endpoints:
+  - `/api/trade/data/items`
+  - `/api/trade/data/stats`
+  - `/api/trade/data/static`
+  - `/api/trade/data/leagues`
+- **During development:** You may use minimal or stale files—services in `src/services/` handle fallback gracefully. If you want to test with new snapshots, you can manually overwrite these files.
+
+## Notes
+- Files are treated as replaceable snapshots; DO NOT hand-edit unless patching fixtures for development/testing.
+- Refer to the project [README](../../README.md) for development workflow and more details on data usage.

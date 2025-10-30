@@ -11,8 +11,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "moduleResolution": "node",
+    "baseUrl": "./",
     "module": "ESNext",
     "strict": true,
+    "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "@components/*": ["src/components/*"],

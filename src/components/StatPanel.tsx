@@ -1,139 +1,171 @@
 import React, { useEffect, useMemo, useState } from 'react';
-    import { StatDefinition, StatService } from '../services/StatService';
-    import { autoWeight, WeightedInput } from '../services/WeightingService';
+import { StatService, StatDefinition } from '../services/StatService';
+import { WeightingService, WeightedStatInput } from '../services/WeightingService';
 
-    interface SelectedStat extends StatDefinition {
-      priority: 1|2|3|4|5;
-      desiredMin?: number;
-      direction: 'gte' | 'lte';
-      weight: number;
-    }
+/**
+ * StatPanel allows users to search for stat modifiers, add them to a
+ * weighted group, adjust individual weights and set a minimum total
+ * weight threshold.  This component loads stat definitions from the
+ * StatService and provides simple UI controls for configuration.
+ */
+const StatPanel: React.FC = () => {
+  // All available stat definitions
+  const [stats, setStats] = useState<StatDefinition[]>([]);
+  // Search term for filtering stats
+  const [search, setSearch] = useState('');
+  /**
+   * Selected stats with weight and optional desired minimum.  The
+   * desiredMin field is currently unused in WeightingService but
+   * reserved for future enhancements.
+   */
+  const [selectedStats, setSelectedStats] = useState<{
+    stat: StatDefinition;
+    weight: number;
+    desiredMin?: number;
+  }[]>([]);
+  // Minimum total weight threshold for the group.  Can be edited by the user.
+  const [minTotal, setMinTotal] = useState<number>(0);
+  // Whether the user has manually edited the minTotal.  If false, the
+  // component will update minTotal based on suggested values when
+  // selected stats change.
+  const [minEdited, setMinEdited] = useState<boolean>(false);
+  // Suggested minTotal computed by WeightingService.  Displayed as
+  // guidance to the user.
+  const [suggestedMin, setSuggestedMin] = useState<number>(0);
 
-    const StatPanel: React.FC = () => {
-      const [allStats, setAllStats] = useState<StatDefinition[]>([]);
-      const [q, setQ] = useState('');
-      const [selected, setSelected] = useState<SelectedStat[]>([]);
-      const [minSum, setMinSum] = useState<number>(50);
-      const [showJson, setShowJson] = useState(false);
-
-      useEffect(() => {
-        StatService.getStats().then(setAllStats);
-      }, []);
-
-      const suggestions = useMemo(() => {
-        const s = q.trim().toLowerCase();
-        if (!s) return [];
-        const already = new Set(selected.map(x => x.id));
-        return allStats
-          .filter(st => !already.has(st.id) && (st.text.toLowerCase().includes(s) || st.category.toLowerCase().includes(s)))
-          .slice(0, 25);
-      }, [q, allStats, selected]);
-
-      const addStat = (st: StatDefinition) => {
-        setSelected(cur => [...cur, { ...st, priority: 3, direction: 'gte', weight: 10 }]);
-        setQ('');
-      };
-
-      const removeStat = (id: string) => {
-        setSelected(cur => cur.filter(s => s.id !== id));
-      };
-
-      const onPriority = (id: string, p: number) => {
-        setSelected(cur => cur.map(s => s.id === id ? { ...s, priority: Math.min(5, Math.max(1, p)) as any } : s));
-      };
-
-      const onDesired = (id: string, v?: number) => {
-        setSelected(cur => cur.map(s => s.id === id ? { ...s, desiredMin: v } : s));
-      };
-
-      const onDirection = (id: string, d: 'gte'|'lte') => {
-        setSelected(cur => cur.map(s => s.id === id ? { ...s, direction: d } : s));
-      };
-
-      const onWeight = (id: string, w: number) => {
-        setSelected(cur => cur.map(s => s.id === id ? { ...s, weight: Math.max(1, Math.round(w)) } : s));
-      };
-
-      const handleAuto = () => {
-        const inputs: WeightedInput[] = selected.map(s => ({
-          id: s.id, text: s.text, priority: s.priority, desiredMin: s.desiredMin, direction: s.direction
-        }));
-        const result = autoWeight(inputs);
-        setSelected(cur => cur.map(st => ({ ...st, weight: result.weights.find(w => w.id === st.id)?.weight ?? st.weight })));
-        setMinSum(result.minSum);
-      };
-
-      const tradeWeightGroup = useMemo(() => {
-        // PoE trade weight2 format:
-        // group: [{ id, value: { weight } }], with group "type":"weight2", "min": minSum
-        return {
-          type: "weight2",
-          min: minSum,
-          filters: selected.map(s => ({
-            id: s.id,
-            disabled: false,
-            value: { weight: s.weight }
-          }))
-        };
-      }, [selected, minSum]);
-
-      return (
-        <div className="stat-panel">
-          <h3>Stats & Weights</h3>
-          <input
-            className="stat-search"
-            placeholder="Search stats…"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-          />
-          {q && suggestions.length > 0 && (
-            <div className="stat-suggestions">
-              {suggestions.map(st => (
-                <div key={st.id} className="stat-suggestion" onClick={() => addStat(st)}>{st.text}</div>
-              ))}
-            </div>
-          )}
-
-          <div className="stat-actions">
-            <button className="btn" onClick={handleAuto}>Auto-weight</button>
-            <div className="min-weight">
-              <label>Min total score</label>
-              <input type="number" value={minSum} onChange={e => setMinSum(parseInt(e.target.value || '0'))} />
-            </div>
-            <button className="btn" onClick={() => setShowJson(s => !s)}>{showJson ? 'Hide' : 'Show'} Trade JSON</button>
-          </div>
-
-          {showJson && (
-            <pre style={{maxHeight:'240px', overflow:'auto', background:'#0f0f0f', padding:'8px', border:'1px solid #333', borderRadius:'6px'}}>
-{JSON.stringify(tradeWeightGroup, null, 2)}
-            </pre>
-          )}
-
-          <div className="stat-list">
-            {selected.map(s => (
-              <div className="stat-row" key={s.id}>
-                <div className="stat-text">{s.text}</div>
-                <div className="stat-controls">
-                  <label>Priority</label>
-                  <select value={s.priority} onChange={e => onPriority(s.id, parseInt(e.target.value))}>
-                    {[1,2,3,4,5].map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                  <label>Dir</label>
-                  <select value={s.direction} onChange={e => onDirection(s.id, e.target.value as any)}>
-                    <option value="gte">≥</option>
-                    <option value="lte">≤</option>
-                  </select>
-                  <label>Desired ≥</label>
-                  <input type="number" value={s.desiredMin ?? ''} onChange={e => onDesired(s.id, e.target.value === '' ? undefined : parseFloat(e.target.value))} style={{width:'7rem'}}/>
-                  <label>Weight</label>
-                  <input type="number" value={s.weight} onChange={e => onWeight(s.id, parseInt(e.target.value || '1'))} style={{width:'6rem'}}/>
-                  <button className="btn" onClick={() => removeStat(s.id)}>Remove</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
+  useEffect(() => {
+    const load = async () => {
+      const defs = await StatService.getStats();
+      setStats(defs);
     };
+    load();
+  }, []);
 
-    export default StatPanel;
+  /**
+   * Filter available stats based on the search term and exclude any
+   * already selected stats.  Limit the number of suggestions to avoid
+   * overwhelming the user.
+   */
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return stats
+      .filter(
+        (s) =>
+          s.text.toLowerCase().includes(q) &&
+          !selectedStats.find((sel) => sel.stat.id === s.id)
+      )
+      .slice(0, 10);
+  }, [stats, search, selectedStats]);
+
+  // Add a stat to the selected list with a default weight of 1
+  const addStat = (stat: StatDefinition) => {
+    setSelectedStats((prev) => [...prev, { stat, weight: 1 }]);
+    setSearch('');
+  };
+
+  // Update the weight for a selected stat at the given index
+  const updateWeight = (index: number, weight: number) => {
+    setSelectedStats((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], weight };
+      return next;
+    });
+  };
+
+  // Remove a stat from the selected list
+  const removeStat = (index: number) => {
+    setSelectedStats((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  /**
+   * Compute and update the suggested minimum total weight whenever the
+   * selected stats or their weights change.  If the user has not
+   * manually edited minTotal (minEdited is false), minTotal will be
+   * updated to the new suggestion.
+   */
+  useEffect(() => {
+    // Build WeightedStatInput array for WeightingService
+    const inputs: WeightedStatInput[] = selectedStats.map((s) => ({
+      id: s.stat.id,
+      weight: s.weight,
+      desiredMin: s.desiredMin,
+    }));
+    const suggestion = WeightingService.suggestMinSum(inputs);
+    setSuggestedMin(suggestion);
+    if (!minEdited) {
+      setMinTotal(suggestion);
+    }
+  }, [selectedStats, minEdited]);
+
+  // Handler for manual minTotal input change
+  const handleMinChange = (value: number) => {
+    setMinEdited(true);
+    setMinTotal(value);
+  };
+
+  return (
+    <div className="stat-panel">
+      <h3>Stat Weights</h3>
+      {/* Search input */}
+      <input
+        type="text"
+        className="stat-search"
+        placeholder="Search modifiers..."
+        value={search}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+      />
+      {/* Suggestions list */}
+      {search && filtered.length > 0 && (
+        <ul className="stat-suggestions">
+          {filtered.map((stat) => (
+            <li key={stat.id} onClick={() => addStat(stat)}>
+              {stat.text}
+            </li>
+          ))}
+        </ul>
+      )}
+      {/* Selected stats and weight controls */}
+      <div className="selected-stats">
+        {selectedStats.map((item, index) => (
+          <div key={item.stat.id} className="stat-row">
+            <span className="stat-text">{item.stat.text}</span>
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              value={item.weight}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateWeight(index, parseFloat(e.target.value))}
+              className="weight-input"
+            />
+            <button
+              type="button"
+              className="remove-stat"
+              onClick={() => removeStat(index)}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+      {/* Minimum total weight input */}
+      <div className="min-weight">
+        <label htmlFor="min-weight-input">Minimum total weight:</label>
+        <input
+          id="min-weight-input"
+          type="number"
+          min="0"
+          step="1"
+          value={minTotal}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleMinChange(parseInt(e.target.value, 10) || 0)}
+          className="min-weight-input"
+        />
+        {/* Display suggested minimum for guidance */}
+        {suggestedMin > 0 && (
+          <span className="suggested-min">(Suggested: {suggestedMin})</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default StatPanel;

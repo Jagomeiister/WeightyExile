@@ -1,65 +1,59 @@
-export type Priority = 1|2|3|4|5;
+/**
+ * WeightingService provides simple helpers for computing a suggested
+ * minimum total weight (minSum) based on selected stats and their
+ * individual weights.  The suggestion is intended to help users pick
+ * a reasonable threshold when they are unsure what to choose.  The
+ * heuristic uses either provided desired minimum values or falls back
+ * to half of the sum of weights.
+ */
 
-export interface WeightedInput {
+export interface WeightedStatInput {
+  /**
+   * Identifier of the stat (not used in calculation but passed through
+   * for completeness).
+   */
   id: string;
-  text: string;
-  priority: Priority;
+  /**
+   * Weight assigned to the stat by the user.  Should be a positive
+   * number.
+   */
+  weight: number;
+  /**
+   * Optional desired minimum roll value for the stat.  If provided
+   * and the direction is greater‑than or equal (≥), the suggestion will
+   * incorporate it into the total threshold.  If omitted for all
+   * stats, the suggestion defaults to half the sum of weights.
+   */
   desiredMin?: number;
-  direction?: 'gte' | 'lte';
 }
 
-const DEFAULT_SCALES: Record<string, number> = {
-  'pseudo.pseudo_total_life': 100,
-  'pseudo.pseudo_total_resistance': 120,
-  'pseudo.pseudo_total_chaos_resistance': 60,
-  'pseudo.pseudo_total_all_attributes': 80,
-};
-
-function scaleFor(id: string, text: string): number {
-  if (DEFAULT_SCALES[id]) return DEFAULT_SCALES[id];
-  const t = text.toLowerCase();
-  if (t.includes('maximum life')) return 100;
-  if (t.includes('resistance')) return 60;
-  if (t.includes('attributes')) return 80;
-  if (t.includes('energy shield')) return 120;
-  if (t.includes('evasion')) return 150;
-  if (t.includes('armour') || t.includes('armor')) return 150;
-  if (t.includes('damage') || t.includes('attack') || t.includes('spell')) return 50;
-  return 100;
-}
-
-export interface AutoWeightResult {
-  weights: { id: string; weight: number }[];
-  minSum: number;
-}
-
-export function autoWeight(inputs: WeightedInput[]): AutoWeightResult {
-  const raw = inputs.map((s) => {
-    const dir = s.direction ?? 'gte';
-    const scale = scaleFor(s.id, s.text);
-    const importance = s.priority;
-    const score = importance / Math.max(1, scale);
-    return { ...s, dir, scale, score };
-  });
-
-  const total = raw.reduce((a, r) => a + r.score, 0) || 1;
-  const weights = raw.map((r) => {
-    const w = Math.max(1, Math.round((r.score / total) * 100));
-    return { id: r.id, weight: w };
-  });
-
-  let minSum = 0;
-  for (const r of raw) {
-    if (typeof r.desiredMin === 'number' && r.direction !== 'lte') {
-      const w = weights.find(w => w.id === r.id)!.weight;
-      minSum += (r.desiredMin * w) / r.scale;
+export class WeightingService {
+  /**
+   * Compute a suggested minimum total weight for a group of stats.
+   * If any desiredMin values are present, the suggestion is the sum of
+   * desiredMin * weight for each stat that defines a desiredMin.  If
+   * none are present, the suggestion defaults to half the sum of all
+   * weights.  The result is rounded to the nearest integer and
+   * guaranteed to be non‑negative.
+   */
+  static suggestMinSum(inputs: WeightedStatInput[]): number {
+    if (!Array.isArray(inputs) || inputs.length === 0) return 0;
+    let sumWeights = 0;
+    let sumDesired = 0;
+    let hasDesired = false;
+    for (const item of inputs) {
+      const weight = isNaN(item.weight) ? 0 : item.weight;
+      sumWeights += weight;
+      if (typeof item.desiredMin === 'number' && !isNaN(item.desiredMin)) {
+        hasDesired = true;
+        sumDesired += item.desiredMin * weight;
+      }
     }
+    if (hasDesired) {
+      return Math.max(0, Math.round(sumDesired));
+    }
+    // Fallback: half the total weight
+    const suggested = sumWeights * 0.5;
+    return Math.max(0, Math.round(suggested));
   }
-  if (!inputs.some(i => typeof i.desiredMin === 'number')) {
-    const sumW = weights.reduce((a, w) => a + w.weight, 0);
-    minSum = Math.round(sumW * 0.5);
-  }
-  minSum = Math.max(1, Math.round(minSum));
-
-  return { weights, minSum };
 }
