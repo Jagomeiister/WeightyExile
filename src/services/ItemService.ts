@@ -14,7 +14,12 @@ export class ItemService {
    */
   static async getBaseTypes(): Promise<string[]> {
     try {
-      const res = await fetch('/weightexile/data/items.json');
+      // Use Vite's BASE_URL to construct the correct path to static data
+      // When deployed to GitHub Pages, BASE_URL will be the repository name (e.g., `/weightexile/`)
+      // During local development it will be `/`.
+      const base = (import.meta as any).env?.BASE_URL || '/';
+      const url = `${base}data/items.json`;
+      const res = await fetch(url);
       if (!res.ok) {
         // Return an empty array on error; you may want to log the error
         return [];

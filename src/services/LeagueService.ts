@@ -11,7 +11,9 @@ export interface League {
 export class LeagueService {
   static async getLeagues(): Promise<League[]> {
     try {
-      const res = await fetch('/weightexile/data/leagues.json');
+      const base = (import.meta as any).env?.BASE_URL || '/';
+      const url = `${base}data/leagues.json`;
+      const res = await fetch(url);
       if (!res.ok) return [];
       const data = await res.json();
       if (Array.isArray(data.result)) {

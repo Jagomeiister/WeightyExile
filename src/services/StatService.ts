@@ -17,7 +17,9 @@ export class StatService {
    */
   static async getStats(): Promise<StatDefinition[]> {
     try {
-      const res = await fetch('/weightexile/data/stats.json');
+      const base = (import.meta as any).env?.BASE_URL || '/';
+      const url = `${base}data/stats.json`;
+      const res = await fetch(url);
       if (!res.ok) return [];
       const data = await res.json();
       // Flatten the stat groups into a single array.  This will be
